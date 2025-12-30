@@ -28,7 +28,6 @@
             height: 100vh;
             overflow: hidden;
             user-select: none;
-            /* 解決 iOS 點擊閃爍問題 */
             -webkit-tap-highlight-color: transparent;
         }
 
@@ -41,7 +40,8 @@
             max-width: 800px;
             padding: 15px 10px;
             box-sizing: border-box;
-            padding-top: max(15px, env(safe-area-inset-top)); /* 避開瀏海 */
+            padding-top: max(15px, env(safe-area-inset-top));
+            flex-shrink: 0; /* 防止被壓縮 */
         }
 
         .level-badge {
@@ -68,16 +68,16 @@
             border: 2px solid #ffd700;
         }
 
-        /* 遊戲棋盤區 - 強制置中並放大 */
+        /* 遊戲棋盤區 */
         .game-board {
             flex: 1;
             display: flex;
             justify-content: center;
             align-items: center;
             width: 100%;
-            overflow: auto;
+            overflow: auto; /* 允許棋盤滾動 */
             position: relative;
-            padding: 20px;
+            padding: 10px;
             box-sizing: border-box;
         }
 
@@ -91,9 +91,8 @@
             transition: all 0.3s ease;
         }
 
-        /* 格子樣式優化 */
         .cell {
-            width: 45px;       /* 手機預設大小 */
+            width: 45px;
             height: 45px;
             background-color: transparent;
             display: flex;
@@ -142,24 +141,24 @@
             animation: shake 0.4s;
         }
 
-        /* 底部鍵盤區 - 優化 iPad 佈局 */
+        /* 底部鍵盤區 */
         .keyboard-area {
             background-color: rgba(255,255,255,0.85);
             backdrop-filter: blur(10px);
-            width: 100%;
-            max-width: 900px; /* 限制最大寬度，避免在 iPad Pro 太寬 */
+            width: 95%; /* 手機版寬度 */
+            max-width: 900px;
             padding: 15px;
             box-sizing: border-box;
             display: grid;
             grid-template-columns: repeat(7, 1fr);
-            gap: 10px;
+            gap: 8px;
             
-            /* 關鍵：避開 iOS 底部 Home 條 */
             padding-bottom: max(20px, env(safe-area-inset-bottom));
             
             border-top-left-radius: 20px;
             border-top-right-radius: 20px;
             box-shadow: 0 -5px 20px rgba(0,0,0,0.1);
+            flex-shrink: 0; /* 防止被壓縮 */
         }
 
         .key-btn {
@@ -198,13 +197,12 @@
             100% { transform: scale(1); opacity: 1; }
         }
 
-        /* --- iPad 平板專用調整 (關鍵修改) --- */
+        /* --- iPad 平板專用調整 (關鍵修改區) --- */
         @media (min-width: 768px) {
-            /* 讓格子變大 */
             .cell { 
-                width: 75px; 
-                height: 75px; 
-                font-size: 2.8rem; /* 字體加大 */
+                width: 70px; 
+                height: 70px; 
+                font-size: 2.6rem;
                 border-width: 3px;
             }
             
@@ -213,19 +211,26 @@
                 padding: 25px;
             }
 
-            /* 鍵盤按鈕變大 */
             .key-btn { 
                 font-size: 2.2rem; 
                 border-radius: 15px;
                 box-shadow: 0 6px 0 #5D4037;
             }
 
+            /* 這裡做了大幅度調整 */
             .keyboard-area {
-                padding: 25px 40px;
-                padding-bottom: max(30px, env(safe-area-inset-bottom));
+                width: 80%; /* 寬度縮窄一點，比較集中 */
+                padding: 30px 40px;
                 gap: 15px;
-                margin-bottom: 20px; /* 稍微離底邊遠一點，看起來比較懸浮 */
-                border-radius: 30px;
+                
+                /* 將鍵盤改為全圓角 */
+                border-radius: 30px; 
+                
+                /* ★重點：這行讓鍵盤往上飛 */
+                margin-bottom: 120px; 
+                
+                /* 增加陰影讓它看起來浮起來 */
+                box-shadow: 0 15px 40px rgba(0,0,0,0.2);
             }
         }
     </style>
@@ -243,28 +248,20 @@
 
     <div id="keyboard" class="keyboard-area"></div>
 
-    <!-- 引用外部題庫 -->
     <script src="levels.js"></script>
 
     <script>
-        // --- 音效系統 (Base64 編碼，無需外部檔案) ---
-        // 答對音效 (清脆的叮聲)
-        const soundCorrect = new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbqWEyM2CfutvPqmAvL2CfutvPqmAvL2CfutvPqmAvL2CfutvPqmAvL2CfutvPqmAvL2CfutvPqmAvL2CfutvPqmAvL2Cfug==");
-        
-        // 答錯音效 (低沉的嘟聲)
-        const soundWrong = new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAgD4AAIA+AAABAAgAZGF0YQAAAADAwMDAwMDAwMDCw8P///+wsLCvr6+wsLCvr6+wsLCvr6+wsLCvr6+wsLCvr6+wsLCvr6+wsLCvr6+wsLCvr6+wsLA=");
-
-        // 勝利音效 (簡單的和弦)
+        // --- 音效系統 ---
+        const soundCorrect = new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbqWEyM2CfutvPqmAvL2CfutvPqmAvL2CfutvPqmAvL2CfutvPqmAvL2CfutvPqmAvL2CfutvPqmAvL2Cfug==");
+        const soundWrong = new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAgD4AAIA+AAABAAgAZGF0YQAAAADAwMDAwMDAwMDCw8P///+wsLCvr6+wsLCvr6+wsLCvr6+wsLCvr6+wsLCvr6+wsLCvr6+wsLCvr6+wsLCvr6+wsLCvr6+wsLA=");
         const soundWin = new Audio("data:audio/wav;base64,UklGRjQBAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YXABAAAA////AAAAAAAAAAAA//8AAP//AAAAAAAAAAD//wAA//8AAAAAAAAAAP//AAD//wAAAAAAAAAA//8AAP//AAAAAAAAAAD//wAA//8AAAAAAAAAAP//AAD//wAAAAAAAAAA//8AAP//AAAAAAAAAAD//wAA");
 
-        // 預防 iOS 靜音，嘗試解鎖 AudioContext
         document.body.addEventListener('click', function() {
             soundCorrect.volume = 0.5;
             soundWrong.volume = 0.5;
         }, { once: true });
 
         function playSound(type) {
-            // 重置播放進度，允許快速連續播放
             if(type === 'correct') {
                 soundCorrect.currentTime = 0;
                 soundCorrect.play().catch(e => console.log("Audio play failed", e));
@@ -330,7 +327,6 @@
                 const btn = document.createElement('div');
                 btn.classList.add('key-btn');
                 btn.innerText = char;
-                // 添加觸摸反饋
                 btn.ontouchstart = () => { btn.style.transform = "scale(0.9)"; };
                 btn.ontouchend = () => { btn.style.transform = "scale(1)"; };
                 btn.onclick = () => handleKeyInput(char);
@@ -347,45 +343,35 @@
         function handleKeyInput(char) {
             if (!selectedCell) return;
 
-            // 填字
             selectedCell.element.innerText = char;
             selectedCell.element.classList.remove('wrong');
-            selectedCell.element.classList.add('pop-anim'); // 簡單動畫
+            selectedCell.element.classList.add('pop-anim');
             
             const key = `${selectedCell.r}-${selectedCell.c}`;
             userAnswers[key] = char;
 
-            // 檢查該格是否正確
             checkSingleCell(selectedCell.r, selectedCell.c, char);
-
-            // 檢查是否過關
             checkLevelComplete();
         }
 
         function checkSingleCell(r, c, char) {
             const level = gameLevels[currentLevelIndex];
             const target = level.data.find(d => d.r === r && d.c === c);
-            
             const cellEl = document.querySelector(`.cell[data-r='${r}'][data-c='${c}']`);
 
             if (target && target.val === char) {
-                // 單格答對
                 cellEl.classList.add('correct');
                 cellEl.classList.remove('wrong');
-                playSound('correct'); // 播放答對音效
-                
-                // 自動跳到下一個空格 (簡單的自動導航)
+                playSound('correct');
                 findNextEmptyCell();
             } else {
-                // 單格答錯
                 cellEl.classList.add('wrong');
                 cellEl.classList.remove('correct');
-                playSound('wrong'); // 播放答錯音效
+                playSound('wrong');
             }
         }
 
         function findNextEmptyCell() {
-            // 尋找下一個還沒填的格子
             const level = gameLevels[currentLevelIndex];
             const empty = level.data.find(item => !item.fixed && !userAnswers[`${item.r}-${item.c}`]);
             if (empty) {
@@ -409,7 +395,7 @@
 
             if (allCorrect) {
                 setTimeout(() => {
-                    playSound('win'); // 播放勝利音效
+                    playSound('win');
                     if(confirm("恭喜過關！ 🎉 要進入下一關嗎？")) {
                          initLevel(currentLevelIndex + 1);
                     }
