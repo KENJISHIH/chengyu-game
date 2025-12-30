@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>成語填字遊戲</title>
+    <style>
+        /* --- CSS 樣式區 --- */
+        :root {
+            --bg-color: #A8C8E6;
+            --cell-bg: #F0F0F0;
+            --cell-border: #333;
+            --correct-color: #4CAF50;
+            --wrong-color: #F44336;
+            --highlight-color: #FFEB3B;
+            --wood-color: #E6B87D;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            background-image: url('https://www.transparenttextures.com/patterns/cubes.png');
+            font-family: "Microsoft JhengHei", "Heiti TC", sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* 頂部資訊欄 */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 95%;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        .level-badge {
+            background-color: var(--wood-color);
+            border: 2px solid #8B4513;
+            border-radius: 20px;
+            padding: 5px 20px;
+            font-weight: bold;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 0 #8B4513;
+        }
+
+        .coin-display {
+            background-color: #444;
+            color: gold;
+            padding: 5px 15px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-weight: bold;
+        }
+
+        /* 遊戲棋盤區 */
+        .game-board {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            overflow: auto;
+            position: relative;
+        }
+
+        .grid-container {
+            display: grid;
+            gap: 4px;
+            background-color: rgba(255,255,255,0.3);
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        .cell {
+            width: 40px;
+            height: 40px;
+            background-color: transparent;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.4rem;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .cell.active {
+            background-color: var(--cell-bg);
+            border: 2px solid #555;
+            box-shadow: 2px 2px 0 rgba(0,0,0,0.2);
+        }
+
+        .cell.fixed {
+            color: #333;
+            background-color: #D3D3D3;
+        }
+
+        .cell.selected {
+            background-color: var(--highlight-color);
+            border-color: #FF9800;
+        }
+
+        .cell.correct {
+            background-color: var(--correct-color);
+            color: white;
+            border-color: #2E7D32;
+        }
+
+        .cell.wrong {
+            background-color: var(--wrong-color);
+            color: white;
+            border-color: #C62828;
+            animation: shake 0.3s;
+        }
+
+        /* 底部鍵盤區 */
+        .keyboard-area {
+            background-color: rgba(255,255,255,0.2);
+            width: 100%;
+            padding: 15px 10px;
+            box-sizing: border-box;
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+            padding-bottom: 30px;
+        }
+
+        .key-btn {
+            aspect-ratio: 1;
+            background-color: #FFF8E1;
+            border: 2px solid #5D4037;
+            border-radius: 8px;
+            font-size: 1.5rem;
+            font-family: "KaiTi", "BiauKai", serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 0 #5D4037;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        .key-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 #5D4037;
+        }
+
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); }
+            75% { transform: translateX(-5px); }
+            100% { transform: translateX(0); }
+        }
+
+        /* iPad 適配 */
+        @media (min-width: 768px) {
+            .cell { width: 60px; height: 60px; font-size: 2rem; }
+            .grid-container { gap: 8px; }
+            .key-btn { font-size: 2rem; }
+            .keyboard-area { padding: 30px 50px; gap: 15px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="level-badge">第 <span id="level-num">1</span> 關</div>
+        <div class="coin-display">💰 <span id="coin-num">4132</span></div>
+    </div>
+
+    <div class="game-board">
+        <div id="grid" class="grid-container"></div>
+    </div>
+
+    <div id="keyboard" class="keyboard-area"></div>
+
+    <!-- 1. 引入外部題庫 (注意順序：先引題庫，再寫邏輯) -->
+    <script src="levels.js"></script>
+
+    <!-- 2. 遊戲主邏輯 -->
+    <script>
+        let currentLevelIndex = 0;
+        let selectedCell = null;
+        let userAnswers = {};
+
+        const gridEl = document.getElementById('grid');
+        const keyboardEl = document.getElementById('keyboard');
+        const levelNumEl = document.getElementById('level-num');
+
+        function initLevel(index) {
+            // 檢查是否還有下一關
+            if (index >= gameLevels.length) {
+                alert("太厲害了！所有關卡已全破！🏆");
+                currentLevelIndex = 0; // 重置回第一關
+                initLevel(0);
+                return;
+            }
+
+            const level = gameLevels[index];
+            currentLevelIndex = index;
+            levelNumEl.innerText = level.id;
+            userAnswers = {};
+            selectedCell = null;
+
+            // 繪製棋盤
+            gridEl.style.gridTemplateColumns = `repeat(${level.cols}, 1fr)`;
+            gridEl.innerHTML = '';
+
+            for (let r = 0; r < level.rows; r++) {
+                for (let c = 0; c < level.cols; c++) {
+                    const cellData = level.data.find(d => d.r === r && d.c === c);
+                    const cellDiv = document.createElement('div');
+                    cellDiv.classList.add('cell');
+                    cellDiv.dataset.r = r;
+                    cellDiv.dataset.c = c;
+
+                    if (cellData) {
+                        cellDiv.classList.add('active');
+                        if (cellData.fixed) {
+                            cellDiv.classList.add('fixed');
+                            cellDiv.innerText = cellData.val;
+                        } else {
+                            cellDiv.onclick = () => selectCell(cellDiv, r, c);
+                        }
+                    }
+                    gridEl.appendChild(cellDiv);
+                }
+            }
+
+            // 繪製鍵盤
+            keyboardEl.innerHTML = '';
+            level.options.forEach(char => {
+                const btn = document.createElement('div');
+                btn.classList.add('key-btn');
+                btn.innerText = char;
+                btn.onclick = () => handleKeyInput(char);
+                keyboardEl.appendChild(btn);
+            });
+        }
+
+        function selectCell(element, r, c) {
+            document.querySelectorAll('.cell.selected').forEach(el => el.classList.remove('selected'));
+            selectedCell = { r, c, element };
+            element.classList.add('selected');
+        }
+
+        function handleKeyInput(char) {
+            if (!selectedCell) return;
+
+            selectedCell.element.innerText = char;
+            selectedCell.element.classList.remove('wrong');
+            
+            const key = `${selectedCell.r}-${selectedCell.c}`;
+            userAnswers[key] = char;
+
+            checkAnswer();
+        }
+
+        function checkAnswer() {
+            const level = gameLevels[currentLevelIndex];
+            let allCorrect = true;
+
+            level.data.forEach(item => {
+                if (!item.fixed) {
+                    const key = `${item.r}-${item.c}`;
+                    const userAnswer = userAnswers[key];
+                    const cellEl = document.querySelector(`.cell[data-r='${item.r}'][data-c='${item.c}']`);
+
+                    if (userAnswer) {
+                        if (userAnswer === item.val) {
+                            cellEl.classList.add('correct');
+                            cellEl.classList.remove('wrong');
+                        } else {
+                            cellEl.classList.add('wrong');
+                            cellEl.classList.remove('correct');
+                            allCorrect = false;
+                        }
+                    } else {
+                        allCorrect = false;
+                    }
+                }
+            });
+
+            if (allCorrect) {
+                // 延遲一點時間，讓玩家看到最後一個字變綠
+                setTimeout(() => {
+                    alert("恭喜過關！ 🎉 即將進入下一關...");
+                    initLevel(currentLevelIndex + 1);
+                }, 300);
+            }
+        }
+
+        // 確保 levels.js 有載入
+        if (typeof gameLevels !== 'undefined') {
+            initLevel(0);
+        } else {
+            alert("題庫載入失敗，請確認 levels.js 是否存在");
+        }
+    </script>
+</body>
+</html>
