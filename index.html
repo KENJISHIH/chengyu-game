@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>成語填字遊戲</title>
     <style>
         /* --- CSS 樣式區 --- */
@@ -28,6 +28,8 @@
             height: 100vh;
             overflow: hidden;
             user-select: none;
+            /* 解決 iOS 點擊閃爍問題 */
+            -webkit-tap-highlight-color: transparent;
         }
 
         /* 頂部資訊欄 */
@@ -35,33 +37,38 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            width: 95%;
-            padding: 10px;
+            width: 90%;
+            max-width: 800px;
+            padding: 15px 10px;
             box-sizing: border-box;
+            padding-top: max(15px, env(safe-area-inset-top)); /* 避開瀏海 */
         }
 
         .level-badge {
             background-color: var(--wood-color);
-            border: 2px solid #8B4513;
+            border: 3px solid #8B4513;
             border-radius: 20px;
-            padding: 5px 20px;
+            padding: 8px 25px;
             font-weight: bold;
-            font-size: 1.2rem;
+            font-size: 1.4rem;
+            color: #3e1e07;
             box-shadow: 0 4px 0 #8B4513;
         }
 
         .coin-display {
-            background-color: #444;
+            background-color: #333;
             color: gold;
-            padding: 5px 15px;
-            border-radius: 15px;
+            padding: 8px 20px;
+            border-radius: 20px;
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 8px;
             font-weight: bold;
+            font-size: 1.2rem;
+            border: 2px solid #ffd700;
         }
 
-        /* 遊戲棋盤區 */
+        /* 遊戲棋盤區 - 強制置中並放大 */
         .game-board {
             flex: 1;
             display: flex;
@@ -70,105 +77,156 @@
             width: 100%;
             overflow: auto;
             position: relative;
+            padding: 20px;
+            box-sizing: border-box;
         }
 
         .grid-container {
             display: grid;
-            gap: 4px;
-            background-color: rgba(255,255,255,0.3);
-            padding: 10px;
-            border-radius: 10px;
+            gap: 6px;
+            background-color: rgba(255,255,255,0.4);
+            padding: 15px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
         }
 
+        /* 格子樣式優化 */
         .cell {
-            width: 40px;
-            height: 40px;
+            width: 45px;       /* 手機預設大小 */
+            height: 45px;
             background-color: transparent;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 1.4rem;
+            font-size: 1.6rem;
             font-weight: bold;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
             position: relative;
+            transition: all 0.2s;
         }
         
         .cell.active {
             background-color: var(--cell-bg);
-            border: 2px solid #555;
+            border: 2px solid #666;
             box-shadow: 2px 2px 0 rgba(0,0,0,0.2);
+            color: #333;
         }
 
         .cell.fixed {
-            color: #333;
-            background-color: #D3D3D3;
+            color: #444;
+            background-color: #ddd;
+            border-color: #888;
         }
 
         .cell.selected {
             background-color: var(--highlight-color);
             border-color: #FF9800;
+            transform: scale(1.1);
+            z-index: 10;
+            box-shadow: 0 5px 15px rgba(255, 152, 0, 0.4);
         }
 
         .cell.correct {
             background-color: var(--correct-color);
             color: white;
             border-color: #2E7D32;
+            animation: popIn 0.3s;
         }
 
         .cell.wrong {
             background-color: var(--wrong-color);
             color: white;
             border-color: #C62828;
-            animation: shake 0.3s;
+            animation: shake 0.4s;
         }
 
-        /* 底部鍵盤區 */
+        /* 底部鍵盤區 - 優化 iPad 佈局 */
         .keyboard-area {
-            background-color: rgba(255,255,255,0.2);
+            background-color: rgba(255,255,255,0.85);
+            backdrop-filter: blur(10px);
             width: 100%;
-            padding: 15px 10px;
+            max-width: 900px; /* 限制最大寬度，避免在 iPad Pro 太寬 */
+            padding: 15px;
             box-sizing: border-box;
             display: grid;
             grid-template-columns: repeat(7, 1fr);
-            gap: 8px;
-            padding-bottom: 30px;
+            gap: 10px;
+            
+            /* 關鍵：避開 iOS 底部 Home 條 */
+            padding-bottom: max(20px, env(safe-area-inset-bottom));
+            
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.1);
         }
 
         .key-btn {
             aspect-ratio: 1;
             background-color: #FFF8E1;
-            border: 2px solid #5D4037;
-            border-radius: 8px;
-            font-size: 1.5rem;
+            border: 2px solid #795548;
+            border-radius: 12px;
+            font-size: 1.6rem;
             font-family: "KaiTi", "BiauKai", serif;
+            color: #3e1e07;
             display: flex;
             justify-content: center;
             align-items: center;
             box-shadow: 0 4px 0 #5D4037;
             cursor: pointer;
-            transition: transform 0.1s;
+            transition: transform 0.1s, background-color 0.1s;
         }
 
         .key-btn:active {
             transform: translateY(4px);
             box-shadow: 0 0 0 #5D4037;
+            background-color: #ffe0b2;
         }
 
+        /* --- 動畫 --- */
         @keyframes shake {
-            0% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            50% { transform: translateX(5px); }
-            75% { transform: translateX(-5px); }
-            100% { transform: translateX(0); }
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-6px); }
+            40% { transform: translateX(6px); }
+            60% { transform: translateX(-6px); }
+            80% { transform: translateX(6px); }
         }
 
-        /* iPad 適配 */
+        @keyframes popIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* --- iPad 平板專用調整 (關鍵修改) --- */
         @media (min-width: 768px) {
-            .cell { width: 60px; height: 60px; font-size: 2rem; }
-            .grid-container { gap: 8px; }
-            .key-btn { font-size: 2rem; }
-            .keyboard-area { padding: 30px 50px; gap: 15px; }
+            /* 讓格子變大 */
+            .cell { 
+                width: 75px; 
+                height: 75px; 
+                font-size: 2.8rem; /* 字體加大 */
+                border-width: 3px;
+            }
+            
+            .grid-container { 
+                gap: 10px; 
+                padding: 25px;
+            }
+
+            /* 鍵盤按鈕變大 */
+            .key-btn { 
+                font-size: 2.2rem; 
+                border-radius: 15px;
+                box-shadow: 0 6px 0 #5D4037;
+            }
+
+            .keyboard-area {
+                padding: 25px 40px;
+                padding-bottom: max(30px, env(safe-area-inset-bottom));
+                gap: 15px;
+                margin-bottom: 20px; /* 稍微離底邊遠一點，看起來比較懸浮 */
+                border-radius: 30px;
+            }
         }
     </style>
 </head>
@@ -185,11 +243,41 @@
 
     <div id="keyboard" class="keyboard-area"></div>
 
-    <!-- 1. 引入外部題庫 (注意順序：先引題庫，再寫邏輯) -->
+    <!-- 引用外部題庫 -->
     <script src="levels.js"></script>
 
-    <!-- 2. 遊戲主邏輯 -->
     <script>
+        // --- 音效系統 (Base64 編碼，無需外部檔案) ---
+        // 答對音效 (清脆的叮聲)
+        const soundCorrect = new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbqWEyM2CfutvPqmAvL2CfutvPqmAvL2CfutvPqmAvL2CfutvPqmAvL2CfutvPqmAvL2CfutvPqmAvL2CfutvPqmAvL2Cfug==");
+        
+        // 答錯音效 (低沉的嘟聲)
+        const soundWrong = new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAgD4AAIA+AAABAAgAZGF0YQAAAADAwMDAwMDAwMDCw8P///+wsLCvr6+wsLCvr6+wsLCvr6+wsLCvr6+wsLCvr6+wsLCvr6+wsLCvr6+wsLCvr6+wsLA=");
+
+        // 勝利音效 (簡單的和弦)
+        const soundWin = new Audio("data:audio/wav;base64,UklGRjQBAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YXABAAAA////AAAAAAAAAAAA//8AAP//AAAAAAAAAAD//wAA//8AAAAAAAAAAP//AAD//wAAAAAAAAAA//8AAP//AAAAAAAAAAD//wAA//8AAAAAAAAAAP//AAD//wAAAAAAAAAA//8AAP//AAAAAAAAAAD//wAA");
+
+        // 預防 iOS 靜音，嘗試解鎖 AudioContext
+        document.body.addEventListener('click', function() {
+            soundCorrect.volume = 0.5;
+            soundWrong.volume = 0.5;
+        }, { once: true });
+
+        function playSound(type) {
+            // 重置播放進度，允許快速連續播放
+            if(type === 'correct') {
+                soundCorrect.currentTime = 0;
+                soundCorrect.play().catch(e => console.log("Audio play failed", e));
+            } else if (type === 'wrong') {
+                soundWrong.currentTime = 0;
+                soundWrong.play().catch(e => console.log("Audio play failed", e));
+            } else if (type === 'win') {
+                soundWin.currentTime = 0;
+                soundWin.play().catch(e => console.log("Audio play failed", e));
+            }
+        }
+
+        // --- 遊戲邏輯 ---
         let currentLevelIndex = 0;
         let selectedCell = null;
         let userAnswers = {};
@@ -199,10 +287,10 @@
         const levelNumEl = document.getElementById('level-num');
 
         function initLevel(index) {
-            // 檢查是否還有下一關
             if (index >= gameLevels.length) {
+                playSound('win');
                 alert("太厲害了！所有關卡已全破！🏆");
-                currentLevelIndex = 0; // 重置回第一關
+                currentLevelIndex = 0;
                 initLevel(0);
                 return;
             }
@@ -213,7 +301,6 @@
             userAnswers = {};
             selectedCell = null;
 
-            // 繪製棋盤
             gridEl.style.gridTemplateColumns = `repeat(${level.cols}, 1fr)`;
             gridEl.innerHTML = '';
 
@@ -238,12 +325,14 @@
                 }
             }
 
-            // 繪製鍵盤
             keyboardEl.innerHTML = '';
             level.options.forEach(char => {
                 const btn = document.createElement('div');
                 btn.classList.add('key-btn');
                 btn.innerText = char;
+                // 添加觸摸反饋
+                btn.ontouchstart = () => { btn.style.transform = "scale(0.9)"; };
+                btn.ontouchend = () => { btn.style.transform = "scale(1)"; };
                 btn.onclick = () => handleKeyInput(char);
                 keyboardEl.appendChild(btn);
             });
@@ -258,54 +347,80 @@
         function handleKeyInput(char) {
             if (!selectedCell) return;
 
+            // 填字
             selectedCell.element.innerText = char;
             selectedCell.element.classList.remove('wrong');
+            selectedCell.element.classList.add('pop-anim'); // 簡單動畫
             
             const key = `${selectedCell.r}-${selectedCell.c}`;
             userAnswers[key] = char;
 
-            checkAnswer();
+            // 檢查該格是否正確
+            checkSingleCell(selectedCell.r, selectedCell.c, char);
+
+            // 檢查是否過關
+            checkLevelComplete();
         }
 
-        function checkAnswer() {
+        function checkSingleCell(r, c, char) {
+            const level = gameLevels[currentLevelIndex];
+            const target = level.data.find(d => d.r === r && d.c === c);
+            
+            const cellEl = document.querySelector(`.cell[data-r='${r}'][data-c='${c}']`);
+
+            if (target && target.val === char) {
+                // 單格答對
+                cellEl.classList.add('correct');
+                cellEl.classList.remove('wrong');
+                playSound('correct'); // 播放答對音效
+                
+                // 自動跳到下一個空格 (簡單的自動導航)
+                findNextEmptyCell();
+            } else {
+                // 單格答錯
+                cellEl.classList.add('wrong');
+                cellEl.classList.remove('correct');
+                playSound('wrong'); // 播放答錯音效
+            }
+        }
+
+        function findNextEmptyCell() {
+            // 尋找下一個還沒填的格子
+            const level = gameLevels[currentLevelIndex];
+            const empty = level.data.find(item => !item.fixed && !userAnswers[`${item.r}-${item.c}`]);
+            if (empty) {
+                const nextCell = document.querySelector(`.cell[data-r='${empty.r}'][data-c='${empty.c}']`);
+                selectCell(nextCell, empty.r, empty.c);
+            }
+        }
+
+        function checkLevelComplete() {
             const level = gameLevels[currentLevelIndex];
             let allCorrect = true;
 
             level.data.forEach(item => {
                 if (!item.fixed) {
                     const key = `${item.r}-${item.c}`;
-                    const userAnswer = userAnswers[key];
-                    const cellEl = document.querySelector(`.cell[data-r='${item.r}'][data-c='${item.c}']`);
-
-                    if (userAnswer) {
-                        if (userAnswer === item.val) {
-                            cellEl.classList.add('correct');
-                            cellEl.classList.remove('wrong');
-                        } else {
-                            cellEl.classList.add('wrong');
-                            cellEl.classList.remove('correct');
-                            allCorrect = false;
-                        }
-                    } else {
+                    if (userAnswers[key] !== item.val) {
                         allCorrect = false;
                     }
                 }
             });
 
             if (allCorrect) {
-                // 延遲一點時間，讓玩家看到最後一個字變綠
                 setTimeout(() => {
-                    alert("恭喜過關！ 🎉 即將進入下一關...");
-                    initLevel(currentLevelIndex + 1);
-                }, 300);
+                    playSound('win'); // 播放勝利音效
+                    if(confirm("恭喜過關！ 🎉 要進入下一關嗎？")) {
+                         initLevel(currentLevelIndex + 1);
+                    }
+                }, 500);
             }
         }
 
-        // 確保 levels.js 有載入
         if (typeof gameLevels !== 'undefined') {
             initLevel(0);
         } else {
-            alert("題庫載入失敗，請確認 levels.js 是否存在");
+            alert("題庫載入失敗");
         }
     </script>
 </body>
